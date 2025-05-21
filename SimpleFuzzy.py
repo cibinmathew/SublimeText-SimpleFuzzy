@@ -101,13 +101,21 @@ def _await_view_goto_line(view, line):
     # wait for view rendering current line in center
     sublime.set_timeout_async(lambda: view.run_command("goto_line", {"line": line}), 10)
 
+
+
+def get_open_file_paths():
+    window = sublime.active_window()
+    views = window.views()
+    file_paths = [v.file_name() for v in views if v.file_name()]
+    return file_paths
 class FolderLineInputHandler(sublime_plugin.ListInputHandler):
 
-    def __init__(self, window):
+    def __init__(self, window, source="active_folder"):
         self.window = window
         self.view = self.window.active_view()
         self._backup_region = self.view.sel()[0]
         self._init = True
+        self.source = source
 
     def name(self):
         return "file_lines"
@@ -128,20 +136,29 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
         _await_view_goto_line(view, line)
 
     def list_items(self):
-        folders = self.window.folders()
-        if len(folders) == 0:
-            sublime.error_message('No project folder found for Fuzzy Project Line search.')
-            return []
-        active_folder = next(
-            (f for f in folders if f in (self.view.file_name() or '')),
-            folders[0]
-        )
+
+        print(self.source)
+        if (self.source) =="opened_files":
+            file_list = get_open_file_paths()
+
+        elif (self.source) =="active_folder":
+            folders = self.window.folders()
+            if len(folders) == 0:
+                sublime.error_message('No project folder found for Fuzzy Project Line search.')
+                return []
+            active_folder = next(
+                (f for f in folders if f in (self.view.file_name() or '')),
+                folders[0]
+            )
+            debug_log('fuzzy project in: %s with Encoding=%s'%(active_folder, encoding))
+            file_list = self._list_files(active_folder, encoding)
+
         encoding = self.view.encoding() if self.view.encoding() != 'Undefined' else 'UTF-8'
-        debug_log('fuzzy project in: %s with Encoding=%s'%(active_folder, encoding))
-        file_list = self._list_files(active_folder, encoding)
+
         threads = []
         lines = []
         for file in file_list:
+            active_folder= os.path.dirname(file)
             if not os.path.exists(file):
                 continue
             view = self.window.find_open_file(file)
@@ -160,6 +177,7 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
 
     # return filenames including folder name
     def _list_files(self, folder, encoding='UTF-8'):
+        print('test')
         user_pref_cmd = self.view.settings().get('simple_fuzzy_ls_cmd', '')
         user_pref_chk = self.view.settings().get('simple_fuzzy_chk_cmd', '')
 
@@ -228,14 +246,23 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
         ]
 
 class FuzzyActiveProjectCommand(sublime_plugin.WindowCommand):
-    def run(self, file_lines):
+
+    def run(self, file_lines, source):
         file = file_lines[0]
         line = file_lines[1]
         view = self.window.open_file(file)
         _await_view_goto_line(view, line)
         
     def input(self, args):
+        print(f"args: {args}")
+        # source="active_folder"
+        if "source" not in args:
+            args['source']="active_folder"
+
         if "file_lines" not in args:
-            return FolderLineInputHandler(self.window)
+            return FolderLineInputHandler(self.window, args['source'])
         else:
             return None
+
+
+

@@ -10,6 +10,7 @@ Example key bindings to the window commands:
 [
 	{ "keys": ["super+k", "super+f"], "command": "fuzzy_current_file"},
 	{ "keys": ["super+k", "super+p"], "command": "fuzzy_active_project"},
+	{ "keys": ["super+k", "super+o"], "command": "fuzzy_active_project", "args": { "source": "opened_files" }},
 ]
 ```
 
