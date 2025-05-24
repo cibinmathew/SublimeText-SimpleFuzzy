@@ -138,14 +138,26 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
     def list_items(self):
 
         print(self.source)
+        # todo: implement an active_folder_no_recurse also
+        encoding = self.view.encoding() if self.view.encoding() != 'Undefined' else 'UTF-8'
         if (self.source) =="opened_files":
             file_list = get_open_file_paths()
 
         elif (self.source) =="active_folder":
             folders = self.window.folders()
             if len(folders) == 0:
-                sublime.error_message('No project folder found for Fuzzy Project Line search.')
-                return []
+                # sublime.error_message('No project folder found for Fuzzy Project Line search.')
+                # return []
+
+                # if no folder/workspace, take the current files directory
+                file_path = self.view.file_name()
+                if file_path:
+                    folders = [os.path.dirname(file_path)]
+                else:
+                    return []
+            print('ttttt')
+            print(f"folders len: {len(folders)}")
+            print(f"folders: {folders}")
             active_folder = next(
                 (f for f in folders if f in (self.view.file_name() or '')),
                 folders[0]
@@ -153,7 +165,7 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
             debug_log('fuzzy project in: %s with Encoding=%s'%(active_folder, encoding))
             file_list = self._list_files(active_folder, encoding)
 
-        encoding = self.view.encoding() if self.view.encoding() != 'Undefined' else 'UTF-8'
+        
 
         threads = []
         lines = []
@@ -205,6 +217,7 @@ class FolderLineInputHandler(sublime_plugin.ListInputHandler):
                 f_list += [os.path.join(root, f) for f in files]
             return f_list
 
+        # todo: if no active  project, it looks in current file's dir(so git ls might not be apt here)
         default_cmds = {
             'rg': lambda: _ls_dir('', 'rg --files "{folder}"'),
             'git': lambda: _ls_dir('git -C "{folder}" status', 'git -C "{folder}" ls-files'),
